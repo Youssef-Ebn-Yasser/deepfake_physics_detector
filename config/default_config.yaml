@@ -1,0 +1,53 @@
+# Configuration for Deepfake Physics Detector
+# Optimised for FaceForensics++ c40 (heavy compression) data
+
+dataset:
+  root: "DataSets"
+  compression: "c40"
+
+  # Real video sources (label = 0)
+  real_sources:
+    - "original_sequences/youtube"
+    - "original_sequences/actors"
+
+  # Fake video sources (label = 1)
+  fake_sources:
+    - "manipulated_sequences/Deepfakes"
+    - "manipulated_sequences/Face2Face"
+    - "manipulated_sequences/FaceSwap"
+    - "manipulated_sequences/FaceShifter"
+    - "manipulated_sequences/NeuralTextures"
+    # DeepFakeDetection excluded by default (different actor set)
+
+  # Train / Val / Test split ratios
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  split_seed: 42
+
+  # Directory for pre-extracted features
+  features_dir: "DataSets/features"
+
+preprocessing:
+  n_frames: 16
+  target_size: [256, 256]
+  gaussian_blur_sigma: 0.8
+
+extractors:
+  feature_dim: 64
+  motion_blur:
+    farneback_iterations: 5
+    farneback_winsize: 21
+
+model:
+  embed_dim: 256
+  master_aux_weight: 0.2
+
+training:
+  batch_size: 32
+  learning_rate_stage1: 1.0e-4
+  learning_rate_stage2: 1.0e-5
+  epochs_stage1: 5
+  epochs_stage2: 15
+  subsystem_epochs: 20
+  subsystem_lr: 1.0e-4
