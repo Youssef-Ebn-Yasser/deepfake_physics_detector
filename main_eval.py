@@ -174,6 +174,13 @@ def main():
     feature_dim = cfg['extractors']['feature_dim']
     embed_dim = cfg['model']['embed_dim']
 
+    from models.master_fusion import SubSystem1Encoder, SubSystem2Encoder, MasterFusionBlock
+    custom_objs = {
+        'SubSystem1Encoder': SubSystem1Encoder,
+        'SubSystem2Encoder': SubSystem2Encoder,
+        'MasterFusionBlock': MasterFusionBlock
+    }
+
     # --- Data ---
     _, _, test_ds, split_info = get_datasets(cfg)
     print(f"\nEvaluating on {split_info['test']} test samples\n")
@@ -184,7 +191,7 @@ def main():
     # --- Master Model ---
     if os.path.exists(args.master):
         print('Loading trained master model ...')
-        master = tf.keras.models.load_model(args.master, compile=False)
+        master = tf.keras.models.load_model(args.master, compile=False, custom_objects=custom_objs)
     else:
         print('No trained master checkpoint found -- using random weights.')
         master = build_master_physics_detector(feature_dim, embed_dim)
@@ -200,7 +207,7 @@ def main():
          'f2_motion_blur': x['f2_motion_blur']}, y))
 
     if os.path.exists(args.sub1):
-        sub1 = tf.keras.models.load_model(args.sub1, compile=False)
+        sub1 = tf.keras.models.load_model(args.sub1, compile=False, custom_objects=custom_objs)
     else:
         sub1 = build_subsystem1_model(feature_dim, embed_dim)
 
@@ -215,7 +222,7 @@ def main():
          'f4_lighting_sh': x['f4_lighting_sh']}, y))
 
     if os.path.exists(args.sub2):
-        sub2 = tf.keras.models.load_model(args.sub2, compile=False)
+        sub2 = tf.keras.models.load_model(args.sub2, compile=False, custom_objects=custom_objs)
     else:
         sub2 = build_subsystem2_model(feature_dim, embed_dim)
 

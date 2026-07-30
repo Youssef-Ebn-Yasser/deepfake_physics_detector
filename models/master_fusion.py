@@ -1,8 +1,8 @@
 import tensorflow as tf
-from tensorflow import keras
+import keras
 from tensorflow.keras import layers, Model, ops
 
-
+@keras.saving.register_keras_serializable()
 class SubSystem1Encoder(layers.Layer):
     """Sub-System 1: Hardware Optics (Lens Distortion + Motion Blur)"""
     def __init__(self, feature_dim=64, embed_dim=256, **kwargs):
@@ -34,7 +34,7 @@ class SubSystem1Encoder(layers.Layer):
         sub_logits = self.classifier(z1, training=training)
         return z1, sub_logits
 
-
+@keras.saving.register_keras_serializable()
 class SubSystem2Encoder(layers.Layer):
     """Sub-System 2: Biological Domain (Biomechanics + Lighting SH)"""
     def __init__(self, feature_dim=64, embed_dim=256, **kwargs):
@@ -66,6 +66,7 @@ class SubSystem2Encoder(layers.Layer):
         return z2, sub_logits
 
 
+@keras.saving.register_keras_serializable()
 class MasterFusionBlock(layers.Layer):
     """
     Master-level cross-attention + gated fusion block.

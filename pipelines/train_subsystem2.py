@@ -76,6 +76,7 @@ def main():
         tf.keras.callbacks.EarlyStopping(
             monitor='val_sub2_logits_acc',
             patience=5,
+            mode='max',  # <--- ADD THIS LINE HERE
             restore_best_weights=True,
             verbose=1,
         ),

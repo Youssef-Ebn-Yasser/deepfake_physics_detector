@@ -12,7 +12,7 @@ Usage:
     python pipelines/train_master.py
     python pipelines/train_master.py --config config/default_config.yaml
     python pipelines/train_master.py --sub1 checkpoints/subsystem1_best.keras \
-                                     --sub2 checkpoints/subsystem2_best.keras
+                                      --sub2 checkpoints/subsystem2_best.keras
 """
 
 import os
@@ -65,31 +65,65 @@ def make_labels_dict(dataset):
 
 
 # -----------------------------------------------------------------------
-# Optional: transfer pre-trained sub-system weights
+# Transfer pre-trained sub-system weights SAFELY
 # -----------------------------------------------------------------------
 
+# def transfer_subsystem_weights(master_model, sub1_path=None, sub2_path=None):
+#     """
+#     Load pre-trained sub-system checkpoints and copy their weights into 
+#     the master model's corresponding sub-encoder layers without needing 
+#     to deserialize custom Keras classes.
+#     """
+#     if sub1_path and os.path.exists(sub1_path):
+#         print(f"Loading Sub-System 1 weights from: {sub1_path}")
+#         try:
+#             # First attempt layer weight transfer directly
+#             dst = master_model.get_layer('subsystem1_hardware')
+#             dst.load_weights(sub1_path, skip_mismatch=True)
+#             print("  -> Sub-System 1 encoder weights transferred.")
+#         except Exception as e:
+#             print(f"  [!] Direct layer loading skipped ({e}). Falling back to full model load...")
+#             sub1 = tf.keras.models.load_model(sub1_path, compile=False)
+#             src = sub1.get_layer('subsystem1_hardware')
+#             dst = master_model.get_layer('subsystem1_hardware')
+#             dst.set_weights(src.get_weights())
+#             print("  -> Sub-System 1 encoder weights transferred via full model fallback.")
+
+#     if sub2_path and os.path.exists(sub2_path):
+#         print(f"Loading Sub-System 2 weights from: {sub2_path}")
+#         try:
+#             dst = master_model.get_layer('subsystem2_biological')
+#             dst.load_weights(sub2_path, skip_mismatch=True)
+#             print("  -> Sub-System 2 encoder weights transferred.")
+#         except Exception as e:
+#             print(f"  [!] Direct layer loading skipped ({e}). Falling back to full model load...")
+#             sub2 = tf.keras.models.load_model(sub2_path, compile=False)
+#             src = sub2.get_layer('subsystem2_biological')
+#             dst = master_model.get_layer('subsystem2_biological')
+#             dst.set_weights(src.get_weights())
+#             print("  -> Sub-System 2 encoder weights transferred via full model fallback.")
 def transfer_subsystem_weights(master_model, sub1_path=None, sub2_path=None):
     """
-    Load pre-trained sub-system checkpoints and copy their encoder
-    weights into the master model's corresponding layers.
+    Loads pre-trained standalone sub-system models and transfers 
+    their encoder layer weights directly into the master model.
     """
     if sub1_path and os.path.exists(sub1_path):
         print(f"Loading Sub-System 1 weights from: {sub1_path}")
-        sub1 = tf.keras.models.load_model(sub1_path, compile=False)
-        # Copy encoder weights
+        from models.master_fusion import SubSystem1Encoder
+        sub1 = tf.keras.models.load_model(sub1_path, compile=False, custom_objects={'SubSystem1Encoder': SubSystem1Encoder})
         src = sub1.get_layer('subsystem1_hardware')
         dst = master_model.get_layer('subsystem1_hardware')
         dst.set_weights(src.get_weights())
-        print("  -> Sub-System 1 encoder weights transferred.")
+        print("  -> Sub-System 1 encoder weights transferred successfully.")
 
     if sub2_path and os.path.exists(sub2_path):
         print(f"Loading Sub-System 2 weights from: {sub2_path}")
-        sub2 = tf.keras.models.load_model(sub2_path, compile=False)
+        from models.master_fusion import SubSystem2Encoder
+        sub2 = tf.keras.models.load_model(sub2_path, compile=False, custom_objects={'SubSystem2Encoder': SubSystem2Encoder})
         src = sub2.get_layer('subsystem2_biological')
         dst = master_model.get_layer('subsystem2_biological')
         dst.set_weights(src.get_weights())
-        print("  -> Sub-System 2 encoder weights transferred.")
-
+        print("  -> Sub-System 2 encoder weights transferred successfully.")
 
 # -----------------------------------------------------------------------
 # Main training loop
@@ -127,7 +161,6 @@ def main():
     transfer_subsystem_weights(model, args.sub1, args.sub2)
 
     losses, loss_weights = make_losses(aux_weight)
-    acc_metric = tf.keras.metrics.BinaryAccuracy(name='acc')
 
     os.makedirs('checkpoints', exist_ok=True)
 
@@ -147,7 +180,7 @@ def main():
         optimizer=tf.keras.optimizers.Adam(learning_rate=lr_stage1),
         loss=losses,
         loss_weights=loss_weights,
-        metrics={'master_logits': [acc_metric]},
+        metrics={'master_logits': [tf.keras.metrics.BinaryAccuracy(name='acc')]},
     )
     model.summary()
 
@@ -155,13 +188,17 @@ def main():
         tf.keras.callbacks.ModelCheckpoint(
             'checkpoints/master_stage1_best.keras',
             monitor='val_master_logits_acc',
-            save_best_only=True, mode='max', verbose=1,
+            save_best_only=True,
+            mode='max',
+            verbose=1,
         ),
     ]
 
     model.fit(
-        train_ds, validation_data=val_ds,
-        epochs=epochs_s1, callbacks=stage1_callbacks,
+        train_ds,
+        validation_data=val_ds,
+        epochs=epochs_s1,
+        callbacks=stage1_callbacks,
     )
 
     # ===================================================================
@@ -179,28 +216,38 @@ def main():
         optimizer=tf.keras.optimizers.Adam(learning_rate=lr_stage2),
         loss=losses,
         loss_weights=loss_weights,
-        metrics={'master_logits': [acc_metric]},
+        metrics={'master_logits': [tf.keras.metrics.BinaryAccuracy(name='acc')]},
     )
 
     stage2_callbacks = [
         tf.keras.callbacks.ModelCheckpoint(
             'checkpoints/master_final_best.keras',
             monitor='val_master_logits_acc',
-            save_best_only=True, mode='max', verbose=1,
+            save_best_only=True,
+            mode='max',
+            verbose=1,
         ),
         tf.keras.callbacks.EarlyStopping(
             monitor='val_master_logits_acc',
-            patience=5, restore_best_weights=True, verbose=1,
+            mode='max',
+            patience=5,
+            restore_best_weights=True,
+            verbose=1,
         ),
         tf.keras.callbacks.ReduceLROnPlateau(
             monitor='val_loss',
-            factor=0.5, patience=3, min_lr=1e-7, verbose=1,
+            factor=0.5,
+            patience=3,
+            min_lr=1e-7,
+            verbose=1,
         ),
     ]
 
     model.fit(
-        train_ds, validation_data=val_ds,
-        epochs=epochs_s2, callbacks=stage2_callbacks,
+        train_ds,
+        validation_data=val_ds,
+        epochs=epochs_s2,
+        callbacks=stage2_callbacks,
     )
 
     # ===================================================================
