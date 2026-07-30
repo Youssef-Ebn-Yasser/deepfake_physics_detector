@@ -1,6 +1,7 @@
 import tensorflow as tf
 import keras
 from tensorflow.keras import layers, Model, ops
+from subsystem3.encoder3 import SubSystem3Encoder
 
 @keras.saving.register_keras_serializable()
 class SubSystem1Encoder(layers.Layer):
@@ -70,10 +71,7 @@ class SubSystem2Encoder(layers.Layer):
 class MasterFusionBlock(layers.Layer):
     """
     Master-level cross-attention + gated fusion block.
-
-    Wraps the master fusion logic in a Layer subclass so that all tensor
-    operations (expand_dims, squeeze, concatenate) go through keras.ops
-    and are fully compatible with Keras 3's Functional API tracing.
+    Now updated to support z1, z2, and z3.
     """
     def __init__(self, embed_dim=256, **kwargs):
         super().__init__(**kwargs)
@@ -86,22 +84,23 @@ class MasterFusionBlock(layers.Layer):
         self.layer_norm = layers.LayerNormalization(name='master_layer_norm')
 
     def call(self, inputs, training=False):
-        z1, z2 = inputs  # Each [B, 256]
+        z1, z2, z3 = inputs  # Each [B, 256]
 
-        q1 = ops.expand_dims(z1, axis=1)  # [B, 1, 256]
-        k2 = ops.expand_dims(z2, axis=1)  # [B, 1, 256]
+        z_stack = ops.stack([z1, z2, z3], axis=1)  # [B, 3, 256]
 
         attn_out = self.master_cross_attn(
-            query=q1, value=k2, key=k2, training=training,
-        )
-        attn_out = ops.squeeze(attn_out, axis=1)  # [B, 256]
+            query=z_stack, value=z_stack, key=z_stack, training=training,
+        )  # [B, 3, 256]
+        
+        attn_pooled = ops.mean(attn_out, axis=1)  # [B, 256]
+        z_avg = ops.mean(z_stack, axis=1)
 
         g_master = self.gate_dense(
-            ops.concatenate([z1, z2], axis=-1)
+            ops.concatenate([z1, z2, z3], axis=-1)
         )  # [B, 256]
 
         master_rep = self.layer_norm(
-            g_master * z1 + (1.0 - g_master) * attn_out
+            g_master * z_avg + (1.0 - g_master) * attn_pooled
         )  # [B, 256]
 
         return master_rep
@@ -110,21 +109,24 @@ class MasterFusionBlock(layers.Layer):
 def build_master_physics_detector(feature_dim=64, embed_dim=256):
     """Functional Keras Master Model for Physics-Aware Deepfake Detection"""
     
-    # Inputs for the 4 extracted feature vectors
+    # Inputs for the 5 extracted feature vectors
     input_f1 = layers.Input(shape=(feature_dim,), name='f1_lens_distortion')
     input_f2 = layers.Input(shape=(feature_dim,), name='f2_motion_blur')
     input_f3 = layers.Input(shape=(feature_dim,), name='f3_biomechanics')
     input_f4 = layers.Input(shape=(feature_dim,), name='f4_lighting_sh')
+    input_f5 = layers.Input(shape=(feature_dim,), name='physics64')
     
     # Sub-Encoder Instantiations
     subsystem1 = SubSystem1Encoder(feature_dim, embed_dim, name='subsystem1_hardware')
     subsystem2 = SubSystem2Encoder(feature_dim, embed_dim, name='subsystem2_biological')
+    subsystem3 = SubSystem3Encoder(feature_dim, embed_dim, name='subsystem3_physics')
     
     z1, sub1_logits = subsystem1([input_f1, input_f2])
     z2, sub2_logits = subsystem2([input_f3, input_f4])
+    z3, sub3_logits = subsystem3(input_f5)
     
-    # Master Cross Attention + Gated Fusion (wrapped in a Layer)
-    master_rep = MasterFusionBlock(embed_dim, name='master_fusion')([z1, z2])
+    # Master Cross Attention + Gated Fusion
+    master_rep = MasterFusionBlock(embed_dim, name='master_fusion')([z1, z2, z3])
     
     # Master Classification Head
     x = layers.Dense(128, activation='relu')(master_rep)
@@ -133,11 +135,12 @@ def build_master_physics_detector(feature_dim=64, embed_dim=256):
     
     # Define multi-output Keras model
     model = Model(
-        inputs=[input_f1, input_f2, input_f3, input_f4],
+        inputs=[input_f1, input_f2, input_f3, input_f4, input_f5],
         outputs={
             'master_logits': master_logits,
             'sub1_logits': sub1_logits,
-            'sub2_logits': sub2_logits
+            'sub2_logits': sub2_logits,
+            'sub3_logits': sub3_logits
         },
         name='MasterPhysicsDeepfakeDetector'
     )

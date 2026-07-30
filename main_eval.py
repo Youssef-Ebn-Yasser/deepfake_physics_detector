@@ -166,6 +166,7 @@ def main():
     parser.add_argument('--master', default='checkpoints/master_final_best.keras')
     parser.add_argument('--sub1', default='checkpoints/subsystem1_best.keras')
     parser.add_argument('--sub2', default='checkpoints/subsystem2_best.keras')
+    parser.add_argument('--sub3', default='checkpoints/subsystem3_best.keras')
     args = parser.parse_args()
 
     with open(args.config, 'r') as f:
@@ -175,9 +176,11 @@ def main():
     embed_dim = cfg['model']['embed_dim']
 
     from models.master_fusion import SubSystem1Encoder, SubSystem2Encoder, MasterFusionBlock
+    from subsystem3.encoder3 import SubSystem3Encoder
     custom_objs = {
         'SubSystem1Encoder': SubSystem1Encoder,
         'SubSystem2Encoder': SubSystem2Encoder,
+        'SubSystem3Encoder': SubSystem3Encoder,
         'MasterFusionBlock': MasterFusionBlock
     }
 
@@ -231,6 +234,23 @@ def main():
     all_metrics.append(s2_metrics)
     roc_data.append(('Sub-System 2', s2_labels, s2_probs))
 
+    # --- Sub-System 3 ---
+    sub3_ds = test_ds.map(lambda x, y: (
+        {'physics64': x['physics64']}, y))
+
+    if os.path.exists(args.sub3):
+        sub3 = tf.keras.models.load_model(args.sub3, compile=False, custom_objects=custom_objs)
+    else:
+        input_f = tf.keras.layers.Input(shape=(feature_dim,), name='physics64')
+        encoder = SubSystem3Encoder(feature_dim, embed_dim, name='subsystem3_physics')
+        z3, sub3_logits = encoder(input_f)
+        sub3 = tf.keras.Model(inputs=input_f, outputs={'sub3_logits': sub3_logits})
+
+    s3_labels, s3_probs = predict_on_dataset(sub3, sub3_ds, 'sub3_logits')
+    s3_metrics = compute_metrics(s3_labels, s3_probs, 'Sub-System 3 (Physics PAC)')
+    all_metrics.append(s3_metrics)
+    roc_data.append(('Sub-System 3', s3_labels, s3_probs))
+
     # --- Print ablation table ---
     print('\n')
     print_metrics_table(all_metrics)
@@ -241,6 +261,7 @@ def main():
     plot_confusion_matrix(m_labels, m_probs, 'Master Fusion', 'results/cm_master.png')
     plot_confusion_matrix(s1_labels, s1_probs, 'Sub-System 1', 'results/cm_sub1.png')
     plot_confusion_matrix(s2_labels, s2_probs, 'Sub-System 2', 'results/cm_sub2.png')
+    plot_confusion_matrix(s3_labels, s3_probs, 'Sub-System 3', 'results/cm_sub3.png')
 
     print('\nEvaluation complete.')
 

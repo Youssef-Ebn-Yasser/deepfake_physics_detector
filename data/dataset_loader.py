@@ -77,24 +77,39 @@ def split_dataset(entries, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15,
     return train_entries, val_entries, test_entries
 
 
-def _load_npz(npz_path_bytes, label):
+def _load_npz(npz_path_bytes, label, features_dir_bytes):
     """
-    tf.py_function wrapper to load a single .npz file.
+    tf.py_function wrapper to load a single .npz file and optionally subsystem3 npy.
 
     Returns:
-        (f1, f2, f3, f4), label
+        (f1, f2, f3, f4, f5), label
     """
     npz_path = npz_path_bytes.numpy().decode('utf-8')
+    features_dir = features_dir_bytes.numpy().decode('utf-8')
     data = np.load(npz_path)
     f1 = data['f1'].astype(np.float32)
     f2 = data['f2'].astype(np.float32)
     f3 = data['f3'].astype(np.float32)
     f4 = data['f4'].astype(np.float32)
+    
+    rel_path = os.path.relpath(npz_path, features_dir)
+    parts = rel_path.replace('\\', '/').split('/')
+    if len(parts) >= 2:
+        category = parts[0]
+        stem = os.path.splitext(parts[1])[0]
+        npy_path = os.path.join(features_dir, 'subsystem3', category, f'{stem}_physics64.npy')
+        if os.path.exists(npy_path):
+            f5 = np.load(npy_path).astype(np.float32)
+        else:
+            f5 = np.zeros(64, dtype=np.float32)
+    else:
+        f5 = np.zeros(64, dtype=np.float32)
+
     label_val = np.float32(label.numpy())
-    return f1, f2, f3, f4, label_val
+    return f1, f2, f3, f4, f5, label_val
 
 
-def build_tf_dataset(entries, batch_size=32, shuffle=True, feature_dim=64):
+def build_tf_dataset(entries, batch_size=32, shuffle=True, feature_dim=64, features_dir='DataSets/features'):
     """
     Build a tf.data.Dataset from a list of (npz_path, label) entries.
 
@@ -104,6 +119,7 @@ def build_tf_dataset(entries, batch_size=32, shuffle=True, feature_dim=64):
             'f2_motion_blur':     (feature_dim,),
             'f3_biomechanics':    (feature_dim,),
             'f4_lighting_sh':     (feature_dim,),
+            'physics64':          (feature_dim,),
         }
         label = scalar float32 (0.0 or 1.0)
     """
@@ -118,16 +134,18 @@ def build_tf_dataset(entries, batch_size=32, shuffle=True, feature_dim=64):
         path_ds = path_ds.shuffle(buffer_size=len(paths), reshuffle_each_iteration=True)
 
     def _map_fn(path, label):
-        f1, f2, f3, f4, lbl = tf.py_function(
+        features_dir_tensor = tf.constant(features_dir)
+        f1, f2, f3, f4, f5, lbl = tf.py_function(
             func=_load_npz,
-            inp=[path, label],
-            Tout=[tf.float32, tf.float32, tf.float32, tf.float32, tf.float32],
+            inp=[path, label, features_dir_tensor],
+            Tout=[tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32],
         )
         # Set shapes so Keras knows the dimensions
         f1.set_shape((feature_dim,))
         f2.set_shape((feature_dim,))
         f3.set_shape((feature_dim,))
         f4.set_shape((feature_dim,))
+        f5.set_shape((feature_dim,))
         lbl.set_shape(())
 
         inputs = {
@@ -135,6 +153,7 @@ def build_tf_dataset(entries, batch_size=32, shuffle=True, feature_dim=64):
             'f2_motion_blur': f2,
             'f3_biomechanics': f3,
             'f4_lighting_sh': f4,
+            'physics64': f5,
         }
         return inputs, lbl
 
@@ -176,11 +195,11 @@ def get_datasets(cfg):
           f"test={len(test_entries)}")
 
     train_ds = build_tf_dataset(train_entries, batch_size, shuffle=True,
-                                feature_dim=feature_dim)
+                                feature_dim=feature_dim, features_dir=features_dir)
     val_ds = build_tf_dataset(val_entries, batch_size, shuffle=False,
-                              feature_dim=feature_dim)
+                              feature_dim=feature_dim, features_dir=features_dir)
     test_ds = build_tf_dataset(test_entries, batch_size, shuffle=False,
-                               feature_dim=feature_dim)
+                               feature_dim=feature_dim, features_dir=features_dir)
 
     split_info = {
         'train': len(train_entries),

@@ -39,18 +39,20 @@ def make_losses(aux_weight=0.2):
         'master_logits': bce,
         'sub1_logits': bce,
         'sub2_logits': bce,
+        'sub3_logits': bce,
     }
     loss_weights = {
         'master_logits': 1.0,
         'sub1_logits': aux_weight,
         'sub2_logits': aux_weight,
+        'sub3_logits': aux_weight,
     }
     return losses, loss_weights
 
 
 def make_labels_dict(dataset):
     """
-    Replicate the single label into a dict matching the model's 3 outputs.
+    Replicate the single label into a dict matching the model's 4 outputs.
     """
     return dataset.map(
         lambda x, y: (
@@ -59,6 +61,7 @@ def make_labels_dict(dataset):
                 'master_logits': y,
                 'sub1_logits': y,
                 'sub2_logits': y,
+                'sub3_logits': y,
             },
         )
     )
@@ -102,7 +105,7 @@ def make_labels_dict(dataset):
 #             dst = master_model.get_layer('subsystem2_biological')
 #             dst.set_weights(src.get_weights())
 #             print("  -> Sub-System 2 encoder weights transferred via full model fallback.")
-def transfer_subsystem_weights(master_model, sub1_path=None, sub2_path=None):
+def transfer_subsystem_weights(master_model, sub1_path=None, sub2_path=None, sub3_path=None):
     """
     Loads pre-trained standalone sub-system models and transfers 
     their encoder layer weights directly into the master model.
@@ -125,6 +128,15 @@ def transfer_subsystem_weights(master_model, sub1_path=None, sub2_path=None):
         dst.set_weights(src.get_weights())
         print("  -> Sub-System 2 encoder weights transferred successfully.")
 
+    if sub3_path and os.path.exists(sub3_path):
+        print(f"Loading Sub-System 3 weights from: {sub3_path}")
+        from subsystem3.encoder3 import SubSystem3Encoder
+        sub3 = tf.keras.models.load_model(sub3_path, compile=False, custom_objects={'SubSystem3Encoder': SubSystem3Encoder})
+        src = sub3.get_layer('subsystem3_physics')
+        dst = master_model.get_layer('subsystem3_physics')
+        dst.set_weights(src.get_weights())
+        print("  -> Sub-System 3 encoder weights transferred successfully.")
+
 # -----------------------------------------------------------------------
 # Main training loop
 # -----------------------------------------------------------------------
@@ -136,6 +148,8 @@ def main():
                         help='Path to pre-trained Sub-System 1 checkpoint')
     parser.add_argument('--sub2', default='checkpoints/subsystem2_best.keras',
                         help='Path to pre-trained Sub-System 2 checkpoint')
+    parser.add_argument('--sub3', default='checkpoints/subsystem3_best.keras',
+                        help='Path to pre-trained Sub-System 3 checkpoint')
     args = parser.parse_args()
 
     with open(args.config, 'r') as f:
@@ -158,7 +172,7 @@ def main():
 
     # --- Model ---
     model = build_master_physics_detector(feature_dim, embed_dim)
-    transfer_subsystem_weights(model, args.sub1, args.sub2)
+    transfer_subsystem_weights(model, args.sub1, args.sub2, args.sub3)
 
     losses, loss_weights = make_losses(aux_weight)
 
@@ -175,6 +189,7 @@ def main():
 
     model.get_layer('subsystem1_hardware').trainable = False
     model.get_layer('subsystem2_biological').trainable = False
+    model.get_layer('subsystem3_physics').trainable = False
 
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=lr_stage1),
@@ -211,6 +226,7 @@ def main():
 
     model.get_layer('subsystem1_hardware').trainable = True
     model.get_layer('subsystem2_biological').trainable = True
+    model.get_layer('subsystem3_physics').trainable = True
 
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=lr_stage2),
