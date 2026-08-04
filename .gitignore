@@ -1,3 +1,8 @@
 /DataSets
 DataSets
 checkpoints
+/checkpoints
+results
+/results
+/venv
+venv
