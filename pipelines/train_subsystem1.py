@@ -22,12 +22,13 @@ from models.subsystem_1 import build_subsystem1_model
 
 
 def make_sub1_dataset(dataset):
-    """Keep only f1 & f2 inputs from the full dataset."""
+    """Keep only f1, f2 & f5 inputs from the full dataset."""
     return dataset.map(
         lambda x, y: (
             {
                 'f1_lens_distortion': x['f1_lens_distortion'],
                 'f2_motion_blur': x['f2_motion_blur'],
+                'f5_frequency_fft': x['f5_frequency_fft'],
             },
             y,
         )

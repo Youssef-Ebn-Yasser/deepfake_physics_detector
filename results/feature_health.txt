@@ -1,0 +1,45 @@
+==========================================
+       FEATURE DIAGNOSTIC REPORT
+==========================================
+
+Total Samples Scanned: 6363
+Class Distribution: Real=1363, Fake=5000
+NaN Found: NO (0 instances)
+Inf Found: NO (0 instances)
+
+Global Statistics (per feature channel):
+----------------------------------------
+f1_lens_distortion:
+  Shape: (6363, 64)
+  Mean:  0.561877
+  Std:   5.955628
+  Min:   0.000000
+  Max:   96.635612
+
+f2_motion_blur:
+  Shape: (6363, 64)
+  Mean:  0.267271
+  Std:   0.946899
+  Min:   -0.027071
+  Max:   18.883595
+
+f3_biomechanics:
+  Shape: (6363, 64)
+  Mean:  0.241779
+  Std:   0.500431
+  Min:   -0.347280
+  Max:   3.424148
+
+f4_lighting_sh:
+  Shape: (6363, 64)
+  Mean:  0.028387
+  Std:   0.132723
+  Min:   -1.370055
+  Max:   3.284267
+
+physics64:
+  Shape: (6363, 64)
+  Mean:  0.139806
+  Std:   0.525496
+  Min:   -15.823956
+  Max:   75.372665

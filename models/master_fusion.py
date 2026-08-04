@@ -1,39 +1,27 @@
 import tensorflow as tf
 import keras
 from tensorflow.keras import layers, Model, ops
-from subsystem3.encoder3 import SubSystem3Encoder
 
 @keras.saving.register_keras_serializable()
 class SubSystem1Encoder(layers.Layer):
-    """Sub-System 1: Hardware Optics (Lens Distortion + Motion Blur)"""
+    """Sub-System 1: Hardware Optics (Lens Distortion + Motion Blur + FFT Frequency)"""
     def __init__(self, feature_dim=64, embed_dim=256, **kwargs):
         super().__init__(**kwargs)
-        self.fc_f1 = layers.Dense(embed_dim)
-        self.fc_f2 = layers.Dense(embed_dim)
-        
-        # Keras Multi-Head Cross Attention
-        self.cross_attn = layers.MultiHeadAttention(num_heads=4, key_dim=embed_dim // 4)
+        self.projection = layers.Dense(embed_dim, activation='relu')
         self.layer_norm = layers.LayerNormalization()
-        
-        # Sub-Classifier Head
         self.classifier = keras.Sequential([
+            layers.Dense(256, activation='relu'),
             layers.Dense(128, activation='relu'),
-            layers.Dropout(0.3),
-            layers.Dense(1, activation=None)  # Output Logits
+            layers.Dense(1, activation=None)
         ])
 
     def call(self, inputs, training=False):
-        f1, f2 = inputs  # Shapes: [B, 64]
-        
-        e1 = ops.expand_dims(self.fc_f1(f1), axis=1)  # [B, 1, 256]
-        e2 = ops.expand_dims(self.fc_f2(f2), axis=1)  # [B, 1, 256]
-        
-        # Cross Attention: Lens queries Blur
-        attn_out = self.cross_attn(query=e1, value=e2, key=e2, training=training)
-        z1 = ops.squeeze(self.layer_norm(e1 + attn_out), axis=1)  # [B, 256]
-        
+        f1, f2, f5 = inputs
+        concat_features = ops.concatenate([f1, f2, f5], axis=-1)
+        z1 = self.layer_norm(self.projection(concat_features))
         sub_logits = self.classifier(z1, training=training)
         return z1, sub_logits
+
 
 @keras.saving.register_keras_serializable()
 class SubSystem2Encoder(layers.Layer):
@@ -42,37 +30,27 @@ class SubSystem2Encoder(layers.Layer):
         super().__init__(**kwargs)
         self.fc_f3 = layers.Dense(embed_dim)
         self.fc_f4 = layers.Dense(embed_dim)
-        
-        # Gated Bilinear Fusion
         self.gate_dense = layers.Dense(embed_dim, activation='sigmoid')
-        
-        # Sub-Classifier Head
         self.classifier = keras.Sequential([
-            layers.Dense(128, activation='relu'),
+            layers.Dense(256, activation='relu'),
             layers.Dropout(0.3),
-            layers.Dense(1, activation=None)  # Output Logits
+            layers.Dense(1, activation=None)
         ])
 
     def call(self, inputs, training=False):
-        f3, f4 = inputs  # Shapes: [B, 64]
-        
-        e3 = self.fc_f3(f3)  # [B, 256]
-        e4 = self.fc_f4(f4)  # [B, 256]
-        
-        concat_feats = ops.concatenate([e3, e4], axis=-1)  # [B, 512]
-        g = self.gate_dense(concat_feats)                  # [B, 256]
-        
-        z2 = g * e3 + (1.0 - g) * e4                       # [B, 256]
+        f3, f4 = inputs
+        e3 = self.fc_f3(f3)
+        e4 = self.fc_f4(f4)
+        concat_feats = ops.concatenate([e3, e4], axis=-1)
+        g = self.gate_dense(concat_feats)
+        z2 = g * e3 + (1.0 - g) * e4
         sub_logits = self.classifier(z2, training=training)
         return z2, sub_logits
 
 
 @keras.saving.register_keras_serializable()
 class MasterFusionBlock(layers.Layer):
-    """
-    Master-level cross-attention + gated fusion block.
-    Now updated to support z1, z2, and z3.
-    """
+    """Master-level cross-attention + gated fusion block for Sub-Systems 1 and 2."""
     def __init__(self, embed_dim=256, **kwargs):
         super().__init__(**kwargs)
         self.master_cross_attn = layers.MultiHeadAttention(
@@ -84,19 +62,19 @@ class MasterFusionBlock(layers.Layer):
         self.layer_norm = layers.LayerNormalization(name='master_layer_norm')
 
     def call(self, inputs, training=False):
-        z1, z2, z3 = inputs  # Each [B, 256]
+        z1, z2 = inputs  # Each [B, 256]
 
-        z_stack = ops.stack([z1, z2, z3], axis=1)  # [B, 3, 256]
+        z_stack = ops.stack([z1, z2], axis=1)  # [B, 2, 256]
 
         attn_out = self.master_cross_attn(
             query=z_stack, value=z_stack, key=z_stack, training=training,
-        )  # [B, 3, 256]
-        
+        )  # [B, 2, 256]
+
         attn_pooled = ops.mean(attn_out, axis=1)  # [B, 256]
         z_avg = ops.mean(z_stack, axis=1)
 
         g_master = self.gate_dense(
-            ops.concatenate([z1, z2, z3], axis=-1)
+            ops.concatenate([z1, z2], axis=-1)
         )  # [B, 256]
 
         master_rep = self.layer_norm(
@@ -107,42 +85,34 @@ class MasterFusionBlock(layers.Layer):
 
 
 def build_master_physics_detector(feature_dim=64, embed_dim=256):
-    """Functional Keras Master Model for Physics-Aware Deepfake Detection"""
-    
-    # Inputs for the 5 extracted feature vectors
+    """Functional Keras Master Model using Sub-Systems 1 and 2 only."""
+
     input_f1 = layers.Input(shape=(feature_dim,), name='f1_lens_distortion')
     input_f2 = layers.Input(shape=(feature_dim,), name='f2_motion_blur')
     input_f3 = layers.Input(shape=(feature_dim,), name='f3_biomechanics')
     input_f4 = layers.Input(shape=(feature_dim,), name='f4_lighting_sh')
-    input_f5 = layers.Input(shape=(feature_dim,), name='physics64')
-    
-    # Sub-Encoder Instantiations
+    input_f5 = layers.Input(shape=(feature_dim,), name='f5_frequency_fft')
+
     subsystem1 = SubSystem1Encoder(feature_dim, embed_dim, name='subsystem1_hardware')
     subsystem2 = SubSystem2Encoder(feature_dim, embed_dim, name='subsystem2_biological')
-    subsystem3 = SubSystem3Encoder(feature_dim, embed_dim, name='subsystem3_physics')
-    
-    z1, sub1_logits = subsystem1([input_f1, input_f2])
+
+    z1, sub1_logits = subsystem1([input_f1, input_f2, input_f5])
     z2, sub2_logits = subsystem2([input_f3, input_f4])
-    z3, sub3_logits = subsystem3(input_f5)
-    
-    # Master Cross Attention + Gated Fusion
-    master_rep = MasterFusionBlock(embed_dim, name='master_fusion')([z1, z2, z3])
-    
-    # Master Classification Head
+
+    master_rep = MasterFusionBlock(embed_dim, name='master_fusion')([z1, z2])
+
     x = layers.Dense(128, activation='relu')(master_rep)
     x = layers.Dropout(0.4)(x)
     master_logits = layers.Dense(1, activation=None, name='master_logits')(x)
-    
-    # Define multi-output Keras model
+
     model = Model(
         inputs=[input_f1, input_f2, input_f3, input_f4, input_f5],
         outputs={
             'master_logits': master_logits,
-            'sub1_logits': sub1_logits,
-            'sub2_logits': sub2_logits,
-            'sub3_logits': sub3_logits
+            'sub1_logits':   sub1_logits,
+            'sub2_logits':   sub2_logits,
         },
         name='MasterPhysicsDeepfakeDetector'
     )
-    
+
     return model

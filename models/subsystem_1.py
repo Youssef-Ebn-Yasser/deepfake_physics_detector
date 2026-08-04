@@ -24,12 +24,13 @@ def build_subsystem1_model(feature_dim=64, embed_dim=256):
     """
     input_f1 = layers.Input(shape=(feature_dim,), name='f1_lens_distortion')
     input_f2 = layers.Input(shape=(feature_dim,), name='f2_motion_blur')
+    input_f5 = layers.Input(shape=(feature_dim,), name='f5_frequency_fft')
 
     encoder = SubSystem1Encoder(feature_dim, embed_dim, name='subsystem1_hardware')
-    z1, sub1_logits = encoder([input_f1, input_f2])
+    z1, sub1_logits = encoder([input_f1, input_f2, input_f5])
 
     model = Model(
-        inputs=[input_f1, input_f2],
+        inputs=[input_f1, input_f2, input_f5],
         outputs={'sub1_logits': sub1_logits, 'z1_embedding': z1},
         name='SubSystem1_HardwareOptics',
     )

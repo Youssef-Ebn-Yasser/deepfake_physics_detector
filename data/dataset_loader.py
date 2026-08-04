@@ -6,14 +6,53 @@ tf.data.Dataset pipeline for the FaceForensics++ dataset.
 Loads pre-extracted .npz feature files (produced by
 pipelines/extract_features.py) and splits them into train / val / test
 sets using a deterministic random seed.
+
+Features per sample:
+    f1  (64-D)  Lens distortion
+    f2  (64-D)  Motion blur
+    f3  (64-D)  Biomechanics / rPPG
+    f4  (64-D)  Lighting spherical harmonics
+    f5  (64-D)  FFT frequency spectrum
 """
 
 import os
 import csv
+import json
+import random
+
 import numpy as np
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 
+
+# ---------------------------------------------------------------------------
+# Normalization
+# ---------------------------------------------------------------------------
+
+def normalize_and_clip_features(f1, f2, f3, f4, f5):
+    """
+    Standardize features channel-by-channel and clip extreme outliers to [-5, +5].
+    Reads per-channel mean/std from config/feature_scaling_stats.json.
+    """
+    with open('config/feature_scaling_stats.json', 'r') as fh:
+        stats = json.load(fh)
+
+    def _norm(x, key):
+        mean, std = stats[key][0], stats[key][1]
+        return tf.clip_by_value((x - mean) / std, -5.0, 5.0)
+
+    return (
+        _norm(f1, 'f1'),
+        _norm(f2, 'f2'),
+        _norm(f3, 'f3'),
+        _norm(f4, 'f4'),
+        _norm(f5, 'f5'),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Manifest loading
+# ---------------------------------------------------------------------------
 
 def load_manifest(features_dir):
     """
@@ -33,7 +72,8 @@ def load_manifest(features_dir):
     with open(manifest_path, 'r') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            abs_path = os.path.join(features_dir, row['npz_path'])
+            path_key = 'npz_path' if 'npz_path' in row else 'path'
+            abs_path = os.path.join(features_dir, row[path_key])
             label = int(row['label'])
             if os.path.exists(abs_path):
                 entries.append((abs_path, label))
@@ -41,75 +81,59 @@ def load_manifest(features_dir):
     return entries
 
 
-def split_dataset(entries, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15,
-                  seed=42):
-    """
-    Stratified train / val / test split.
+# ---------------------------------------------------------------------------
+# Train / val / test split
+# ---------------------------------------------------------------------------
 
-    Returns:
-        (train_entries, val_entries, test_entries)
-    """
-    paths = [e[0] for e in entries]
+def split_dataset(entries, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, seed=42):
+    """Stratified train / val / test split."""
+    paths  = [e[0] for e in entries]
     labels = [e[1] for e in entries]
 
-    # First split: train vs (val + test)
     val_test_ratio = val_ratio + test_ratio
     train_paths, valtest_paths, train_labels, valtest_labels = train_test_split(
-        paths, labels,
-        test_size=val_test_ratio,
-        stratify=labels,
-        random_state=seed,
+        paths, labels, test_size=val_test_ratio, stratify=labels, random_state=seed,
     )
 
-    # Second split: val vs test
     relative_test = test_ratio / val_test_ratio
     val_paths, test_paths, val_labels, test_labels = train_test_split(
         valtest_paths, valtest_labels,
-        test_size=relative_test,
-        stratify=valtest_labels,
-        random_state=seed,
+        test_size=relative_test, stratify=valtest_labels, random_state=seed,
     )
 
-    train_entries = list(zip(train_paths, train_labels))
-    val_entries = list(zip(val_paths, val_labels))
-    test_entries = list(zip(test_paths, test_labels))
+    return (
+        list(zip(train_paths, train_labels)),
+        list(zip(val_paths,   val_labels)),
+        list(zip(test_paths,  test_labels)),
+    )
 
-    return train_entries, val_entries, test_entries
 
+# ---------------------------------------------------------------------------
+# .npz loader (tf.py_function wrapper)
+# ---------------------------------------------------------------------------
 
-def _load_npz(npz_path_bytes, label, features_dir_bytes):
-    """
-    tf.py_function wrapper to load a single .npz file and optionally subsystem3 npy.
-
-    Returns:
-        (f1, f2, f3, f4, f5), label
-    """
+def _load_npz(npz_path_bytes, label):
+    """Load one .npz file and return the five feature arrays + label."""
     npz_path = npz_path_bytes.numpy().decode('utf-8')
-    features_dir = features_dir_bytes.numpy().decode('utf-8')
     data = np.load(npz_path)
+
     f1 = data['f1'].astype(np.float32)
     f2 = data['f2'].astype(np.float32)
     f3 = data['f3'].astype(np.float32)
     f4 = data['f4'].astype(np.float32)
-    
-    rel_path = os.path.relpath(npz_path, features_dir)
-    parts = rel_path.replace('\\', '/').split('/')
-    if len(parts) >= 2:
-        category = parts[0]
-        stem = os.path.splitext(parts[1])[0]
-        npy_path = os.path.join(features_dir, 'subsystem3', category, f'{stem}_physics64.npy')
-        if os.path.exists(npy_path):
-            f5 = np.load(npy_path).astype(np.float32)
-        else:
-            f5 = np.zeros(64, dtype=np.float32)
-    else:
-        f5 = np.zeros(64, dtype=np.float32)
+    f5 = data['f5'].astype(np.float32) if 'f5' in data else np.zeros(64, dtype=np.float32)
 
     label_val = np.float32(label.numpy())
     return f1, f2, f3, f4, f5, label_val
 
 
-def build_tf_dataset(entries, batch_size=32, shuffle=True, feature_dim=64, features_dir='DataSets/features'):
+# ---------------------------------------------------------------------------
+# tf.data.Dataset builder
+# ---------------------------------------------------------------------------
+
+def build_tf_dataset(entries, batch_size=32, shuffle=True,
+                     feature_dim=64, features_dir='DataSets/features',
+                     normalize=True):
     """
     Build a tf.data.Dataset from a list of (npz_path, label) entries.
 
@@ -119,11 +143,11 @@ def build_tf_dataset(entries, batch_size=32, shuffle=True, feature_dim=64, featu
             'f2_motion_blur':     (feature_dim,),
             'f3_biomechanics':    (feature_dim,),
             'f4_lighting_sh':     (feature_dim,),
-            'physics64':          (feature_dim,),
+            'f5_frequency_fft':   (feature_dim,),
         }
         label = scalar float32 (0.0 or 1.0)
     """
-    paths = [e[0] for e in entries]
+    paths  = [e[0] for e in entries]
     labels = [e[1] for e in entries]
 
     path_ds = tf.data.Dataset.from_tensor_slices(
@@ -134,13 +158,11 @@ def build_tf_dataset(entries, batch_size=32, shuffle=True, feature_dim=64, featu
         path_ds = path_ds.shuffle(buffer_size=len(paths), reshuffle_each_iteration=True)
 
     def _map_fn(path, label):
-        features_dir_tensor = tf.constant(features_dir)
         f1, f2, f3, f4, f5, lbl = tf.py_function(
             func=_load_npz,
-            inp=[path, label, features_dir_tensor],
+            inp=[path, label],
             Tout=[tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32],
         )
-        # Set shapes so Keras knows the dimensions
         f1.set_shape((feature_dim,))
         f2.set_shape((feature_dim,))
         f3.set_shape((feature_dim,))
@@ -148,35 +170,125 @@ def build_tf_dataset(entries, batch_size=32, shuffle=True, feature_dim=64, featu
         f5.set_shape((feature_dim,))
         lbl.set_shape(())
 
-        inputs = {
+        if normalize:
+            f1, f2, f3, f4, f5 = normalize_and_clip_features(f1, f2, f3, f4, f5)
+
+        return {
             'f1_lens_distortion': f1,
-            'f2_motion_blur': f2,
-            'f3_biomechanics': f3,
-            'f4_lighting_sh': f4,
-            'physics64': f5,
-        }
-        return inputs, lbl
+            'f2_motion_blur':     f2,
+            'f3_biomechanics':    f3,
+            'f4_lighting_sh':     f4,
+            'f5_frequency_fft':   f5,
+        }, lbl
 
     dataset = path_ds.map(_map_fn, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    if batch_size is not None:
+        dataset = dataset.batch(batch_size)
+    dataset = dataset.prefetch(tf.data.AUTOTUNE)
     return dataset
 
 
-def get_datasets(cfg):
-    """
-    High-level convenience function: load manifest, split, build datasets.
+# ---------------------------------------------------------------------------
+# High-level helpers
+# ---------------------------------------------------------------------------
 
-    Args:
-        cfg: Parsed YAML config dict.
-
-    Returns:
-        (train_ds, val_ds, test_ds, split_info)
-        where split_info is a dict with entry counts.
+def get_strict_datasets(cfg):
     """
-    ds_cfg = cfg['dataset']
+    Strict 1:1 balanced test/val sets, dynamically balanced 50/50 training.
+    """
+    ds_cfg       = cfg['dataset']
     features_dir = ds_cfg['features_dir']
-    batch_size = cfg['training']['batch_size']
-    feature_dim = cfg['extractors']['feature_dim']
+    batch_size   = cfg['training']['batch_size']
+    feature_dim  = cfg['extractors']['feature_dim']
+    seed         = ds_cfg.get('split_seed', 42)
+
+    entries = load_manifest(features_dir)
+    print(f"Loaded manifest: {len(entries)} samples "
+          f"({sum(1 for _, l in entries if l == 0)} real, "
+          f"{sum(1 for _, l in entries if l == 1)} fake)")
+
+    real_entries = []
+    fake_by_method = {'Deepfakes': [], 'Face2Face': [], 'FaceSwap': [], 'NeuralTextures': []}
+    other_fakes = []
+
+    for path, label in entries:
+        if label == 0:
+            real_entries.append((path, label))
+        else:
+            matched = False
+            for method in fake_by_method:
+                if f'manipulated_sequences_{method}' in path:
+                    fake_by_method[method].append((path, label))
+                    matched = True
+                    break
+            if not matched:
+                other_fakes.append((path, label))
+
+    random.seed(seed)
+    random.shuffle(real_entries)
+    for method in fake_by_method:
+        random.shuffle(fake_by_method[method])
+
+    test_real = real_entries[:200]
+    test_fake = (
+        fake_by_method['Deepfakes'][:50]       +
+        fake_by_method['Face2Face'][:50]        +
+        fake_by_method['FaceSwap'][:50]         +
+        fake_by_method['NeuralTextures'][:50]
+    )
+    test_entries = test_real + test_fake
+
+    val_real = real_entries[200:300]
+    val_fake = (
+        fake_by_method['Deepfakes'][50:75]      +
+        fake_by_method['Face2Face'][50:75]       +
+        fake_by_method['FaceSwap'][50:75]        +
+        fake_by_method['NeuralTextures'][50:75]
+    )
+    val_entries = val_real + val_fake
+
+    train_real = real_entries[300:]
+    train_fake = (
+        fake_by_method['Deepfakes'][75:]        +
+        fake_by_method['Face2Face'][75:]         +
+        fake_by_method['FaceSwap'][75:]          +
+        fake_by_method['NeuralTextures'][75:]    +
+        other_fakes
+    )
+
+    print(f"STRICT SPLIT:")
+    print(f"  Test:  {len(test_real)} Real,  {len(test_fake)} Fake")
+    print(f"  Val:   {len(val_real)} Real,  {len(val_fake)} Fake")
+    print(f"  Train: {len(train_real)} Real, {len(train_fake)} Fake")
+
+    train_real_ds = build_tf_dataset(train_real, batch_size=None, shuffle=True,
+                                     feature_dim=feature_dim, features_dir=features_dir)
+    train_fake_ds = build_tf_dataset(train_fake, batch_size=None, shuffle=True,
+                                     feature_dim=feature_dim, features_dir=features_dir)
+
+    train_ds = tf.data.Dataset.sample_from_datasets(
+        [train_real_ds, train_fake_ds], weights=[0.5, 0.5], stop_on_empty_dataset=True
+    ).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+
+    val_ds  = build_tf_dataset(val_entries,  batch_size, shuffle=False,
+                                feature_dim=feature_dim, features_dir=features_dir)
+    test_ds = build_tf_dataset(test_entries, batch_size, shuffle=False,
+                                feature_dim=feature_dim, features_dir=features_dir)
+
+    split_info = {
+        'train': len(train_real) + len(train_fake),
+        'val':   len(val_entries),
+        'test':  len(test_entries),
+    }
+    return train_ds, val_ds, test_ds, split_info
+
+
+def get_random_datasets(cfg):
+    """Standard 70/15/15 stratified random split."""
+    ds_cfg       = cfg['dataset']
+    features_dir = ds_cfg['features_dir']
+    batch_size   = cfg['training']['batch_size']
+    feature_dim  = cfg['extractors']['feature_dim']
 
     entries = load_manifest(features_dir)
     print(f"Loaded manifest: {len(entries)} samples "
@@ -185,10 +297,10 @@ def get_datasets(cfg):
 
     train_entries, val_entries, test_entries = split_dataset(
         entries,
-        train_ratio=ds_cfg.get('train_ratio', 0.7),
-        val_ratio=ds_cfg.get('val_ratio', 0.15),
-        test_ratio=ds_cfg.get('test_ratio', 0.15),
-        seed=ds_cfg.get('split_seed', 42),
+        train_ratio = ds_cfg.get('train_ratio',  0.7),
+        val_ratio   = ds_cfg.get('val_ratio',    0.15),
+        test_ratio  = ds_cfg.get('test_ratio',   0.15),
+        seed        = ds_cfg.get('split_seed',   42),
     )
 
     print(f"Split: train={len(train_entries)}, val={len(val_entries)}, "
@@ -196,14 +308,19 @@ def get_datasets(cfg):
 
     train_ds = build_tf_dataset(train_entries, batch_size, shuffle=True,
                                 feature_dim=feature_dim, features_dir=features_dir)
-    val_ds = build_tf_dataset(val_entries, batch_size, shuffle=False,
-                              feature_dim=feature_dim, features_dir=features_dir)
-    test_ds = build_tf_dataset(test_entries, batch_size, shuffle=False,
-                               feature_dim=feature_dim, features_dir=features_dir)
+    val_ds   = build_tf_dataset(val_entries,   batch_size, shuffle=False,
+                                feature_dim=feature_dim, features_dir=features_dir)
+    test_ds  = build_tf_dataset(test_entries,  batch_size, shuffle=False,
+                                feature_dim=feature_dim, features_dir=features_dir)
 
     split_info = {
         'train': len(train_entries),
-        'val': len(val_entries),
-        'test': len(test_entries),
+        'val':   len(val_entries),
+        'test':  len(test_entries),
     }
     return train_ds, val_ds, test_ds, split_info
+
+
+def get_datasets(cfg):
+    """Default: standard 70/15/15 random split."""
+    return get_random_datasets(cfg)

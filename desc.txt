@@ -1,0 +1,115 @@
+DEEPFAKE PHYSICS DETECTOR - SYSTEM ARCHITECTURE AND FILE DESCRIPTION
+====================================================================
+
+This document provides a deep, detailed analysis of the Deepfake Physics Detector project. The system is designed to detect deepfakes by analysing inconsistencies across three distinct domains: Hardware Optics, Biological constraints, and Physical interactions. 
+
+The framework fuses these three independent Sub-Systems into a single Master network capable of robust classification.
+
+---
+
+1. ROOT DIRECTORY FILES
+-----------------------
+- `main_eval.py`
+  The primary evaluation script for the system. It loads the compiled Master network along with all three independently trained Sub-System checkpoints. It runs over the test set, computing accuracy, AUC-ROC, Precision, Recall, and F1 scores for both the final fused Master network and each individual subsystem. It also generates ROC curves and confusion matrices for ablation analysis.
+
+- `requirements.txt`
+  Contains the Python package dependencies necessary to run the project (e.g., TensorFlow, OpenCV, scikit-learn, etc.).
+
+---
+
+2. /data (Data Handling & Initial Preprocessing)
+----------------------------------------------
+Handles the raw video parsing, frame extraction, face detection, and splitting.
+
+- `data/preprocessing.py`
+  This script processes raw video sequences. It samples a fixed number of frames per video, runs a face detector to locate the face, applies temporal smoothing to the bounding boxes to prevent jitter, and crops/resizes the faces to a standardized 256x256 resolution. These frames become the baseline input for all feature extractors.
+
+- `data/dataset_loader.py`
+  A tf.data.Dataset pipeline. It parses the `manifest.csv` file to find pre-extracted .npz and .npy features. It is responsible for dynamically splitting the data into Train/Val/Test subsets and feeding batches of multi-modal features (f1, f2, f3, f4, physics64) to Keras during training.
+
+---
+
+3. /extractors (Sub-System 1 & 2 Feature Extraction)
+----------------------------------------------------
+Contains mathematical and heuristic algorithms to extract physical properties from the 256x256 face crops.
+
+- `extractors/lens_distortion.py` (f1)
+  Extracts Camera/Optics parameters. Analyzes the spatial warping and chromatic aberrations induced by physical camera lenses, which Deepfake GANs fail to correctly simulate.
+
+- `extractors/motion_blur.py` (f2)
+  Analyzes temporal blur. Determines if the motion blur across frames obeys physical shutter speed laws or if it contains unnatural sharpness/ghosting introduced by frame-by-frame deepfake generation.
+
+- `extractors/biomechanics.py` (f3)
+  Extracts human biological features, such as subtle head pose kinematics, micro-expressions, or heart-rate (rPPG) signals that cannot be faked perfectly.
+
+- `extractors/lighting_sh.py` (f4)
+  Estimates Spherical Harmonic (SH) lighting coefficients from the face. Compares shading gradients to see if the face is lit consistently with a real 3D environment.
+
+---
+
+4. /subsystem3 (Physics-Aware Consistency)
+------------------------------------------
+A completely independent, model-free pipeline designed to extract geometric and physical consistency rules directly from the preprocessed frames.
+
+- `subsystem3/preprocessing3.py`
+  Uses pure OpenCV to estimate face landmarks via geometric approximations and segments the skin using YCrCb color space. It generates a normal map (Shape-from-Shading) using Sobel gradients without needing any external neural networks.
+  
+- `subsystem3/reflection.py`, `shading.py`, `shadow.py`, `lighting.py`
+  Mathematical modules that compute inconsistencies in specularity (reflection), Lambertian shading, self-shadowing, and directional lighting.
+
+- `subsystem3/feature_extractor3.py`
+  Aggregates the physical properties into a single 64-D "physics64" feature vector per frame.
+
+- `subsystem3/encoder3.py`
+  Contains the Keras architecture (`SubSystem3Encoder`) for transforming the 64-D physical feature into a latent representation.
+
+- `subsystem3/train_subsystem3.py`
+  The independent training loop used to optimize the Sub-System 3 network on the physics features before it is frozen and injected into the Master network.
+
+---
+
+5. /models (Neural Network Architectures)
+-----------------------------------------
+Defines the Keras models used to process the extracted features.
+
+- `models/subsystem_1.py`
+  Defines the architecture for Sub-System 1 (Hardware). Takes `f1` and `f2` as input and produces `z1`.
+
+- `models/subsystem_2.py`
+  Defines the architecture for Sub-System 2 (Biological). Takes `f3` and `f4` as input and produces `z2`.
+
+- `models/master_fusion.py`
+  The orchestrator network. It takes the pre-trained weights of Sub-System 1, 2, and 3, freezes them, concatenates their outputs (`z1`, `z2`, `z3`), and passes them through a final Multi-Layer Perceptron (MLP) fusion block to produce the final True/False prediction.
+
+---
+
+6. /pipelines (Execution Pipelines)
+-----------------------------------
+Contains the top-level scripts meant to be executed by the user to run full batch processes.
+
+- `pipelines/extract_features.py`
+  Iterates over the raw video datasets, processes frames using `data/preprocessing.py`, runs the extractors from `/extractors`, and saves the results as `.npz` files alongside a `manifest.csv`.
+
+- `pipelines/extract_features3.py`
+  Iterates over the existing `.npz` manifest, loads the corresponding frames, and runs the `/subsystem3` physics extraction. Saves the outputs as `..._physics64.npy`.
+
+- `pipelines/train_subsystem1.py` & `pipelines/train_subsystem2.py`
+  Independent training scripts for the first two subsystems. `train_subsystem2.py` includes a custom `--balanced` flag to allow training on exactly 1000 Original, 1000 Deepfakes, and 1000 Face2Face samples.
+
+- `pipelines/train_master.py`
+  Loads the frozen checkpoints from the Sub-Systems, builds the Master network, and trains the final fusion layer.
+
+- `pipelines/plot_features.py`
+  A standalone visualization script. It loads exactly 500 Real and 500 Fake feature vectors from each subsystem and reduces their dimensionality to 2D using t-SNE. Generates scatter plots saved to `/results` to visually demonstrate feature separability.
+
+---
+
+7. /config (Configuration)
+--------------------------
+Contains `.yaml` configuration files that control hyperparameters like learning rates, epochs, feature dimensions, and batch sizes across all scripts.
+
+8. /results & /checkpoints (Outputs)
+------------------------------------
+- `/results`: Contains the output visualisations, such as ROC curve plots, Confusion Matrices, and t-SNE scatter plots.
+- `/checkpoints`: Stores the optimized weights (`.keras` files) for the individual Sub-Systems and the Master Fusion network.
+- `/DataSets/features`: Contains the extracted `.npz` and `.npy` feature files and the `manifest.csv` index.
