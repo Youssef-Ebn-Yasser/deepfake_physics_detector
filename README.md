@@ -77,11 +77,46 @@ This system looks at how the physical camera lens and sensor interacted with the
 2. **Motion Blur ($f_2$)**: Extracts Farneback optical flow and compares it against object movement to detect synthetic or missing motion blur.
 3. **Frequency Spectrum ($f_5$)**: Computes the 2D FFT (Fast Fourier Transform) azimuthal average to find high-frequency artifacts left behind by upsampling layers in deepfake generators.
 
+```mermaid
+graph LR
+    A[Raw Video] --> B[Grayscale Frames]
+    B --> C[Lens Distortion f1]
+    
+    A --> D[Optical Flow]
+    D --> E[Motion Blur f2]
+    
+    B --> F[2D FFT]
+    F --> G[Azimuthal Avg f5]
+    
+    C --> H[Concat & Dense]
+    E --> H
+    G --> H
+    
+    H --> I[Sub-System 1 Embedding Z1]
+```
+
 ### 🫀 Sub-System 2: Biological Domain
 This system analyzes the physiological signals of the human subject in the video.
 
 1. **Biomechanics / rPPG ($f_3$)**: Extracts remote photoplethysmography (rPPG) signals by tracking micro-color variations in the face caused by blood flow and heartbeat. Deepfakes often lack a consistent, biological pulse.
 2. **Lighting Spherical Harmonics ($f_4$)**: Estimates the 3D lighting environment (Spherical Harmonics) hitting the face. Deepfakes frequently stitch faces onto target bodies without matching the ambient lighting environment correctly.
+
+```mermaid
+graph LR
+    A[Raw Video] --> B[Face Landmarks]
+    
+    A --> C[Color Micro-Variations]
+    C --> D[rPPG Pulse Signal f3]
+    
+    B --> E[3D Face Mesh Extraction]
+    E --> F[Spherical Harmonics f4]
+    
+    D --> G[Dense Projection]
+    F --> G
+    
+    G --> H[Sigmoid Gating]
+    H --> I[Sub-System 2 Embedding Z2]
+```
 
 ---
 
