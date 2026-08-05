@@ -229,37 +229,31 @@ def get_strict_datasets(cfg):
     for method in fake_by_method:
         random.shuffle(fake_by_method[method])
 
-    test_real = real_entries[:200]
-    test_fake = (
-        fake_by_method['Deepfakes'][:50]       +
-        fake_by_method['Face2Face'][:50]        +
-        fake_by_method['FaceSwap'][:50]         +
-        fake_by_method['NeuralTextures'][:50]
-    )
-    test_entries = test_real + test_fake
+    # 1. Select the requested subset for Train + Val
+    trainval_real = real_entries[:1000]
+    trainval_df   = fake_by_method['Deepfakes'][:750]
+    trainval_f2f  = fake_by_method['Face2Face'][:750]
 
-    val_real = real_entries[200:300]
-    val_fake = (
-        fake_by_method['Deepfakes'][50:75]      +
-        fake_by_method['Face2Face'][50:75]       +
-        fake_by_method['FaceSwap'][50:75]        +
-        fake_by_method['NeuralTextures'][50:75]
-    )
-    val_entries = val_real + val_fake
+    trainval_entries = trainval_real + trainval_df + trainval_f2f
+    random.shuffle(trainval_entries)
 
-    train_real = real_entries[300:]
-    train_fake = (
-        fake_by_method['Deepfakes'][75:]        +
-        fake_by_method['Face2Face'][75:]         +
-        fake_by_method['FaceSwap'][75:]          +
-        fake_by_method['NeuralTextures'][75:]    +
-        other_fakes
-    )
+    # 2. Split 80/20 for Training and Validation
+    split_idx = int(len(trainval_entries) * 0.8)
+    train_entries = trainval_entries[:split_idx]
+    val_entries   = trainval_entries[split_idx:]
+
+    # Separate train into real/fake for 50-50 tf.data sampling
+    train_real = [e for e in train_entries if e[1] == 0]
+    train_fake = [e for e in train_entries if e[1] == 1]
+
+    # 3. Test set: All remaining unused videos to prevent data leakage
+    used_paths = {e[0] for e in trainval_entries}
+    test_entries = [e for e in entries if e[0] not in used_paths]
 
     print(f"STRICT SPLIT:")
-    print(f"  Test:  {len(test_real)} Real,  {len(test_fake)} Fake")
-    print(f"  Val:   {len(val_real)} Real,  {len(val_fake)} Fake")
     print(f"  Train: {len(train_real)} Real, {len(train_fake)} Fake")
+    print(f"  Val:   {sum(1 for e in val_entries if e[1]==0)} Real,  {sum(1 for e in val_entries if e[1]==1)} Fake")
+    print(f"  Test:  {sum(1 for e in test_entries if e[1]==0)} Real,  {sum(1 for e in test_entries if e[1]==1)} Fake")
 
     train_real_ds = build_tf_dataset(train_real, batch_size=None, shuffle=True,
                                      feature_dim=feature_dim, features_dir=features_dir)
