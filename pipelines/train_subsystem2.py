@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import random
 import yaml
 import tensorflow as tf
-from data.dataset_loader import get_datasets, load_manifest, build_tf_dataset
+from data.dataset_loader import get_strict_datasets, load_manifest, build_tf_dataset
 from models.subsystem_2 import build_subsystem2_model
 
 def get_balanced_datasets(cfg):
@@ -99,7 +99,7 @@ def main():
     if args.balanced:
         train_ds, val_ds, _, split_info = get_balanced_datasets(cfg)
     else:
-        train_ds, val_ds, _, split_info = get_datasets(cfg)
+        train_ds, val_ds, _, split_info = get_strict_datasets(cfg)
         
     train_ds = make_sub2_dataset(train_ds)
     val_ds = make_sub2_dataset(val_ds)

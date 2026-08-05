@@ -6,218 +6,326 @@ Deepfake Physics Detector - Clean Metrics Log
 >>> STARTING EXPERIMENT SET: Features v1 <<<
 
 =======================================================
-STEP: Train Mid-Level Fusion (Features v1)
+STEP: Pre-train Sub-System 1 (Features v1)
 =======================================================
 
-Epoch 1/10
-Epoch 1: val_fusion_logits_acc improved from None to 0.36059, saving model to checkpoints/fusion12_mid_stage1_best.keras
-Epoch 1: finished saving model to checkpoints/fusion12_mid_stage1_best.keras
-Epoch 2/10
-Epoch 2: val_fusion_logits_acc did not improve from 0.36059
-Epoch 3/10
-Epoch 3: val_fusion_logits_acc did not improve from 0.36059
-Epoch 4/10
-Epoch 4: val_fusion_logits_acc did not improve from 0.36059
-Epoch 5/10
-Epoch 5: val_fusion_logits_acc did not improve from 0.36059
-Epoch 6/10
-Epoch 6: val_fusion_logits_acc did not improve from 0.36059
-Epoch 7/10
-Epoch 7: val_fusion_logits_acc did not improve from 0.36059
-Epoch 8/10
-Epoch 8: val_fusion_logits_acc did not improve from 0.36059
-Epoch 9/10
-Epoch 9: val_fusion_logits_acc did not improve from 0.36059
-Epoch 10/10
-Epoch 10: val_fusion_logits_acc did not improve from 0.36059
+WARNING:tensorflow:TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+STRICT SPLIT:
+  Train: 793 Real, 1207 Fake
+  Val:   207 Real,  293 Fake
+  Test:  363 Real,  3500 Fake
+  Epochs: 20  |  LR: 0.0001  |  Train: 2000  Val: 500
 Epoch 1/20
-Epoch 1: val_fusion_logits_acc improved from None to 0.36059, saving model to checkpoints/fusion12_mid_final_best.keras
-Epoch 1: finished saving model to checkpoints/fusion12_mid_final_best.keras
+Epoch 1: val_sub1_logits_acc improved from None to 0.41800, saving model to checkpoints/subsystem1_best.keras
+Epoch 1: finished saving model to checkpoints/subsystem1_best.keras
 Epoch 2/20
-Epoch 2: val_fusion_logits_acc did not improve from 0.36059
+Epoch 2: val_sub1_logits_acc improved from 0.41800 to 0.50400, saving model to checkpoints/subsystem1_best.keras
+Epoch 2: finished saving model to checkpoints/subsystem1_best.keras
 Epoch 3/20
-Epoch 3: val_fusion_logits_acc did not improve from 0.36059
+Epoch 3: val_sub1_logits_acc improved from 0.50400 to 0.51000, saving model to checkpoints/subsystem1_best.keras
+Epoch 3: finished saving model to checkpoints/subsystem1_best.keras
 Epoch 4/20
-Epoch 4: val_fusion_logits_acc did not improve from 0.36059
+Epoch 4: val_sub1_logits_acc did not improve from 0.51000
 Epoch 5/20
-Epoch 5: val_fusion_logits_acc did not improve from 0.36059
-Epoch 5: ReduceLROnPlateau reducing learning rate to 4.999999873689376e-05.
+Epoch 5: val_sub1_logits_acc did not improve from 0.51000
 Epoch 6/20
-Epoch 6: val_fusion_logits_acc did not improve from 0.36059
+Epoch 6: val_sub1_logits_acc did not improve from 0.51000
 Epoch 7/20
-Epoch 7: val_fusion_logits_acc did not improve from 0.36059
+Epoch 7: val_sub1_logits_acc did not improve from 0.51000
+Epoch 8/20
+Epoch 8: val_sub1_logits_acc did not improve from 0.51000
+Epoch 8: early stopping
+
+=======================================================
+STEP: Pre-train Sub-System 2 (Features v1)
+=======================================================
+
+WARNING:tensorflow:TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+  Epochs: 20  |  LR: 0.0001  |  Train: 3000  Val: 1681
+Epoch 1/20
+Epoch 1: val_sub2_logits_acc improved from None to 0.56930, saving model to checkpoints/subsystem2_best.keras
+Epoch 1: finished saving model to checkpoints/subsystem2_best.keras
+Epoch 2/20
+Epoch 2: val_sub2_logits_acc improved from 0.56930 to 0.57168, saving model to checkpoints/subsystem2_best.keras
+Epoch 2: finished saving model to checkpoints/subsystem2_best.keras
+Epoch 3/20
+Epoch 3: val_sub2_logits_acc did not improve from 0.57168
+Epoch 4/20
+Epoch 4: val_sub2_logits_acc did not improve from 0.57168
+Epoch 5/20
+Epoch 5: val_sub2_logits_acc did not improve from 0.57168
+Epoch 6/20
+Epoch 6: val_sub2_logits_acc did not improve from 0.57168
+Epoch 6: ReduceLROnPlateau reducing learning rate to 4.999999873689376e-05.
+Epoch 7/20
+Epoch 7: val_sub2_logits_acc did not improve from 0.57168
 Epoch 7: early stopping
 
 =======================================================
-STEP: Eval Mid-Level Fusion on Celeb-DF (Features v1)
+STEP: Train Mid-Level Fusion (Features v1)
 =======================================================
 
+STRICT SPLIT:
+  Train: 793 Real, 1207 Fake
+  Val:   207 Real,  293 Fake
+  Test:  363 Real,  3500 Fake
+WARNING:tensorflow:TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+Epoch 1/10
+Epoch 1: val_fusion_logits_acc improved from None to 0.41400, saving model to checkpoints/fusion12_mid_stage1_best.keras
+Epoch 1: finished saving model to checkpoints/fusion12_mid_stage1_best.keras
+Epoch 2/10
+Epoch 2: val_fusion_logits_acc did not improve from 0.41400
+Epoch 3/10
+Epoch 3: val_fusion_logits_acc did not improve from 0.41400
+Epoch 4/10
+Epoch 4: val_fusion_logits_acc did not improve from 0.41400
+Epoch 5/10
+Epoch 5: val_fusion_logits_acc did not improve from 0.41400
+Epoch 6/10
+Epoch 6: val_fusion_logits_acc did not improve from 0.41400
+Epoch 7/10
+Epoch 7: val_fusion_logits_acc did not improve from 0.41400
+Epoch 8/10
+Epoch 8: val_fusion_logits_acc did not improve from 0.41400
+Epoch 9/10
+Epoch 9: val_fusion_logits_acc did not improve from 0.41400
+Epoch 10/10
+Epoch 10: val_fusion_logits_acc did not improve from 0.41400
+Epoch 1/20
+Epoch 1: val_fusion_logits_acc improved from None to 0.41400, saving model to checkpoints/fusion12_mid_final_best.keras
+Epoch 1: finished saving model to checkpoints/fusion12_mid_final_best.keras
+Epoch 2/20
+Epoch 2: val_fusion_logits_acc did not improve from 0.41400
+Epoch 3/20
+Epoch 3: val_fusion_logits_acc did not improve from 0.41400
+Epoch 4/20
+Epoch 4: val_fusion_logits_acc did not improve from 0.41400
+Epoch 5/20
+Epoch 5: val_fusion_logits_acc did not improve from 0.41400
+Epoch 5: ReduceLROnPlateau reducing learning rate to 4.999999873689376e-05.
+Epoch 6/20
+Epoch 6: val_fusion_logits_acc did not improve from 0.41400
+Epoch 7/20
+Epoch 7: val_fusion_logits_acc did not improve from 0.41400
+Epoch 7: early stopping
 
 =======================================================
 STEP: Train Master Fusion (Features v1)
 =======================================================
 
-  Train: 4454  |  Val: 954
+WARNING:tensorflow:TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+STRICT SPLIT:
+  Train: 793 Real, 1207 Fake
+  Val:   207 Real,  293 Fake
+  Test:  363 Real,  3500 Fake
+  Train: 2000  |  Val: 500
 Epoch 1/10
-Epoch 1: val_master_logits_acc improved from None to 0.36059, saving model to checkpoints/master_stage1_best.keras
+Epoch 1: val_master_logits_acc improved from None to 0.41400, saving model to checkpoints/master_stage1_best.keras
 Epoch 1: finished saving model to checkpoints/master_stage1_best.keras
 Epoch 2/10
-Epoch 2: val_master_logits_acc improved from 0.36059 to 0.69916, saving model to checkpoints/master_stage1_best.keras
-Epoch 2: finished saving model to checkpoints/master_stage1_best.keras
+Epoch 2: val_master_logits_acc did not improve from 0.41400
 Epoch 3/10
-Epoch 3: val_master_logits_acc did not improve from 0.69916
+Epoch 3: val_master_logits_acc did not improve from 0.41400
 Epoch 4/10
-Epoch 4: val_master_logits_acc did not improve from 0.69916
+Epoch 4: val_master_logits_acc did not improve from 0.41400
 Epoch 5/10
-Epoch 5: val_master_logits_acc did not improve from 0.69916
+Epoch 5: val_master_logits_acc did not improve from 0.41400
 Epoch 6/10
-Epoch 6: val_master_logits_acc did not improve from 0.69916
+Epoch 6: val_master_logits_acc did not improve from 0.41400
 Epoch 7/10
-Epoch 7: val_master_logits_acc did not improve from 0.69916
+Epoch 7: val_master_logits_acc did not improve from 0.41400
 Epoch 8/10
-Epoch 8: val_master_logits_acc improved from 0.69916 to 0.71803, saving model to checkpoints/master_stage1_best.keras
-Epoch 8: finished saving model to checkpoints/master_stage1_best.keras
+Epoch 8: val_master_logits_acc did not improve from 0.41400
 Epoch 9/10
-Epoch 9: val_master_logits_acc did not improve from 0.71803
+Epoch 9: val_master_logits_acc did not improve from 0.41400
 Epoch 10/10
-Epoch 10: val_master_logits_acc improved from 0.71803 to 0.73899, saving model to checkpoints/master_stage1_best.keras
-Epoch 10: finished saving model to checkpoints/master_stage1_best.keras
+Epoch 10: val_master_logits_acc did not improve from 0.41400
 Epoch 1/20
-Epoch 1: val_master_logits_acc improved from None to 0.70964, saving model to checkpoints/master_final_best.keras
+Epoch 1: val_master_logits_acc improved from None to 0.41400, saving model to checkpoints/master_final_best.keras
 Epoch 1: finished saving model to checkpoints/master_final_best.keras
 Epoch 2/20
-Epoch 2: val_master_logits_acc did not improve from 0.70964
+Epoch 2: val_master_logits_acc did not improve from 0.41400
 Epoch 3/20
-Epoch 3: val_master_logits_acc did not improve from 0.70964
+Epoch 3: val_master_logits_acc improved from 0.41400 to 0.41600, saving model to checkpoints/master_final_best.keras
+Epoch 3: finished saving model to checkpoints/master_final_best.keras
 Epoch 4/20
-Epoch 4: val_master_logits_acc did not improve from 0.70964
+Epoch 4: val_master_logits_acc did not improve from 0.41600
+Epoch 4: ReduceLROnPlateau reducing learning rate to 4.999999873689376e-05.
 Epoch 5/20
-Epoch 5: val_master_logits_acc did not improve from 0.70964
+Epoch 5: val_master_logits_acc did not improve from 0.41600
 Epoch 6/20
-Epoch 6: val_master_logits_acc did not improve from 0.70964
-Epoch 6: early stopping
+Epoch 6: val_master_logits_acc did not improve from 0.41600
+Epoch 7/20
+Epoch 7: val_master_logits_acc did not improve from 0.41600
+Epoch 8/20
+Epoch 8: val_master_logits_acc did not improve from 0.41600
+Epoch 8: early stopping
 
 =======================================================
 STEP: Eval Master Fusion (Features v1)
 =======================================================
 
+WARNING:tensorflow:TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
 
 
 >>> STARTING EXPERIMENT SET: Features v2 <<<
 
 =======================================================
+STEP: Pre-train Sub-System 1 (Features v2)
+=======================================================
+
+WARNING:tensorflow:TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+STRICT SPLIT:
+  Train: 793 Real, 1207 Fake
+  Val:   207 Real,  293 Fake
+  Test:  363 Real,  3500 Fake
+  Epochs: 20  |  LR: 0.0001  |  Train: 2000  Val: 500
+Epoch 1/20
+Epoch 1: val_sub1_logits_acc improved from None to 0.41400, saving model to checkpoints/subsystem1_best.keras
+Epoch 1: finished saving model to checkpoints/subsystem1_best.keras
+Epoch 2/20
+Epoch 2: val_sub1_logits_acc did not improve from 0.41400
+Epoch 3/20
+Epoch 3: val_sub1_logits_acc did not improve from 0.41400
+Epoch 4/20
+Epoch 4: val_sub1_logits_acc improved from 0.41400 to 0.44600, saving model to checkpoints/subsystem1_best.keras
+Epoch 4: finished saving model to checkpoints/subsystem1_best.keras
+Epoch 5/20
+Epoch 5: val_sub1_logits_acc did not improve from 0.44600
+Epoch 6/20
+Epoch 6: val_sub1_logits_acc did not improve from 0.44600
+Epoch 7/20
+Epoch 7: val_sub1_logits_acc improved from 0.44600 to 0.45000, saving model to checkpoints/subsystem1_best.keras
+Epoch 7: finished saving model to checkpoints/subsystem1_best.keras
+Epoch 8/20
+Epoch 8: val_sub1_logits_acc did not improve from 0.45000
+Epoch 9/20
+Epoch 9: val_sub1_logits_acc did not improve from 0.45000
+Epoch 10/20
+Epoch 10: val_sub1_logits_acc did not improve from 0.45000
+Epoch 11/20
+Epoch 11: val_sub1_logits_acc did not improve from 0.45000
+Epoch 12/20
+Epoch 12: val_sub1_logits_acc did not improve from 0.45000
+Epoch 12: early stopping
+
+=======================================================
+STEP: Pre-train Sub-System 2 (Features v2)
+=======================================================
+
+WARNING:tensorflow:TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+  Epochs: 20  |  LR: 0.0001  |  Train: 3000  Val: 1681
+Epoch 1/20
+Epoch 1: val_sub2_logits_acc improved from None to 0.87745, saving model to checkpoints/subsystem2_best.keras
+Epoch 1: finished saving model to checkpoints/subsystem2_best.keras
+Epoch 2/20
+Epoch 2: val_sub2_logits_acc did not improve from 0.87745
+Epoch 3/20
+Epoch 3: val_sub2_logits_acc did not improve from 0.87745
+Epoch 4/20
+Epoch 4: val_sub2_logits_acc did not improve from 0.87745
+Epoch 5/20
+Epoch 5: val_sub2_logits_acc did not improve from 0.87745
+Epoch 6/20
+Epoch 6: val_sub2_logits_acc did not improve from 0.87745
+Epoch 6: early stopping
+
+=======================================================
 STEP: Train Mid-Level Fusion (Features v2)
 =======================================================
 
+STRICT SPLIT:
+  Train: 793 Real, 1207 Fake
+  Val:   207 Real,  293 Fake
+  Test:  363 Real,  3500 Fake
+WARNING:tensorflow:TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
 Epoch 1/10
-Epoch 1: val_fusion_logits_acc improved from None to 0.78616, saving model to checkpoints/fusion12_mid_stage1_best.keras
+Epoch 1: val_fusion_logits_acc improved from None to 0.41400, saving model to checkpoints/fusion12_mid_stage1_best.keras
 Epoch 1: finished saving model to checkpoints/fusion12_mid_stage1_best.keras
 Epoch 2/10
-Epoch 2: val_fusion_logits_acc did not improve from 0.78616
+Epoch 2: val_fusion_logits_acc did not improve from 0.41400
 Epoch 3/10
-Epoch 3: val_fusion_logits_acc did not improve from 0.78616
+Epoch 3: val_fusion_logits_acc did not improve from 0.41400
 Epoch 4/10
-Epoch 4: val_fusion_logits_acc did not improve from 0.78616
+Epoch 4: val_fusion_logits_acc did not improve from 0.41400
 Epoch 5/10
-Epoch 5: val_fusion_logits_acc did not improve from 0.78616
+Epoch 5: val_fusion_logits_acc did not improve from 0.41400
 Epoch 6/10
-Epoch 6: val_fusion_logits_acc did not improve from 0.78616
+Epoch 6: val_fusion_logits_acc did not improve from 0.41400
 Epoch 7/10
-Epoch 7: val_fusion_logits_acc did not improve from 0.78616
+Epoch 7: val_fusion_logits_acc did not improve from 0.41400
 Epoch 8/10
-Epoch 8: val_fusion_logits_acc did not improve from 0.78616
+Epoch 8: val_fusion_logits_acc did not improve from 0.41400
 Epoch 9/10
-Epoch 9: val_fusion_logits_acc did not improve from 0.78616
+Epoch 9: val_fusion_logits_acc did not improve from 0.41400
 Epoch 10/10
-Epoch 10: val_fusion_logits_acc did not improve from 0.78616
+Epoch 10: val_fusion_logits_acc did not improve from 0.41400
 Epoch 1/20
-Epoch 1: val_fusion_logits_acc improved from None to 0.21384, saving model to checkpoints/fusion12_mid_final_best.keras
+Epoch 1: val_fusion_logits_acc improved from None to 0.41400, saving model to checkpoints/fusion12_mid_final_best.keras
 Epoch 1: finished saving model to checkpoints/fusion12_mid_final_best.keras
 Epoch 2/20
-Epoch 2: val_fusion_logits_acc did not improve from 0.21384
+Epoch 2: val_fusion_logits_acc did not improve from 0.41400
 Epoch 3/20
-Epoch 3: val_fusion_logits_acc improved from 0.21384 to 0.23166, saving model to checkpoints/fusion12_mid_final_best.keras
-Epoch 3: finished saving model to checkpoints/fusion12_mid_final_best.keras
+Epoch 3: val_fusion_logits_acc did not improve from 0.41400
 Epoch 4/20
-Epoch 4: val_fusion_logits_acc improved from 0.23166 to 0.44864, saving model to checkpoints/fusion12_mid_final_best.keras
-Epoch 4: finished saving model to checkpoints/fusion12_mid_final_best.keras
+Epoch 4: val_fusion_logits_acc did not improve from 0.41400
 Epoch 5/20
-Epoch 5: val_fusion_logits_acc did not improve from 0.44864
+Epoch 5: val_fusion_logits_acc did not improve from 0.41400
 Epoch 6/20
-Epoch 6: val_fusion_logits_acc did not improve from 0.44864
+Epoch 6: val_fusion_logits_acc did not improve from 0.41400
+Epoch 6: ReduceLROnPlateau reducing learning rate to 4.999999873689376e-05.
 Epoch 7/20
-Epoch 7: val_fusion_logits_acc did not improve from 0.44864
-Epoch 7: ReduceLROnPlateau reducing learning rate to 4.999999873689376e-05.
-Epoch 8/20
-Epoch 8: val_fusion_logits_acc did not improve from 0.44864
-Epoch 9/20
-Epoch 9: val_fusion_logits_acc did not improve from 0.44864
-Epoch 10/20
-Epoch 10: val_fusion_logits_acc did not improve from 0.44864
-Epoch 10: ReduceLROnPlateau reducing learning rate to 2.499999936844688e-05.
-Epoch 10: early stopping
-
-=======================================================
-STEP: Eval Mid-Level Fusion on Celeb-DF (Features v2)
-=======================================================
-
+Epoch 7: val_fusion_logits_acc did not improve from 0.41400
+Epoch 7: early stopping
 
 =======================================================
 STEP: Train Master Fusion (Features v2)
 =======================================================
 
-  Train: 4454  |  Val: 954
+WARNING:tensorflow:TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+STRICT SPLIT:
+  Train: 793 Real, 1207 Fake
+  Val:   207 Real,  293 Fake
+  Test:  363 Real,  3500 Fake
+  Train: 2000  |  Val: 500
 Epoch 1/10
-Epoch 1: val_master_logits_acc improved from None to 0.55765, saving model to checkpoints/master_stage1_best.keras
+Epoch 1: val_master_logits_acc improved from None to 0.41400, saving model to checkpoints/master_stage1_best.keras
 Epoch 1: finished saving model to checkpoints/master_stage1_best.keras
 Epoch 2/10
-Epoch 2: val_master_logits_acc did not improve from 0.55765
+Epoch 2: val_master_logits_acc did not improve from 0.41400
 Epoch 3/10
-Epoch 3: val_master_logits_acc improved from 0.55765 to 0.70650, saving model to checkpoints/master_stage1_best.keras
-Epoch 3: finished saving model to checkpoints/master_stage1_best.keras
+Epoch 3: val_master_logits_acc did not improve from 0.41400
 Epoch 4/10
-Epoch 4: val_master_logits_acc did not improve from 0.70650
+Epoch 4: val_master_logits_acc did not improve from 0.41400
 Epoch 5/10
-Epoch 5: val_master_logits_acc did not improve from 0.70650
+Epoch 5: val_master_logits_acc did not improve from 0.41400
 Epoch 6/10
-Epoch 6: val_master_logits_acc did not improve from 0.70650
+Epoch 6: val_master_logits_acc did not improve from 0.41400
 Epoch 7/10
-Epoch 7: val_master_logits_acc did not improve from 0.70650
+Epoch 7: val_master_logits_acc did not improve from 0.41400
 Epoch 8/10
-Epoch 8: val_master_logits_acc did not improve from 0.70650
+Epoch 8: val_master_logits_acc did not improve from 0.41400
 Epoch 9/10
-Epoch 9: val_master_logits_acc did not improve from 0.70650
+Epoch 9: val_master_logits_acc did not improve from 0.41400
 Epoch 10/10
-Epoch 10: val_master_logits_acc did not improve from 0.70650
+Epoch 10: val_master_logits_acc did not improve from 0.41400
 Epoch 1/20
-Epoch 1: val_master_logits_acc improved from None to 0.54822, saving model to checkpoints/master_final_best.keras
+Epoch 1: val_master_logits_acc improved from None to 0.41400, saving model to checkpoints/master_final_best.keras
 Epoch 1: finished saving model to checkpoints/master_final_best.keras
 Epoch 2/20
-Epoch 2: val_master_logits_acc improved from 0.54822 to 0.63312, saving model to checkpoints/master_final_best.keras
-Epoch 2: finished saving model to checkpoints/master_final_best.keras
+Epoch 2: val_master_logits_acc did not improve from 0.41400
 Epoch 3/20
-Epoch 3: val_master_logits_acc did not improve from 0.63312
+Epoch 3: val_master_logits_acc did not improve from 0.41400
 Epoch 4/20
-Epoch 4: val_master_logits_acc improved from 0.63312 to 0.73480, saving model to checkpoints/master_final_best.keras
-Epoch 4: finished saving model to checkpoints/master_final_best.keras
-Epoch 4: ReduceLROnPlateau reducing learning rate to 4.999999873689376e-05.
+Epoch 4: val_master_logits_acc did not improve from 0.41400
 Epoch 5/20
-Epoch 5: val_master_logits_acc improved from 0.73480 to 0.75472, saving model to checkpoints/master_final_best.keras
-Epoch 5: finished saving model to checkpoints/master_final_best.keras
+Epoch 5: val_master_logits_acc did not improve from 0.41400
 Epoch 6/20
-Epoch 6: val_master_logits_acc did not improve from 0.75472
-Epoch 7/20
-Epoch 7: val_master_logits_acc did not improve from 0.75472
-Epoch 8/20
-Epoch 8: val_master_logits_acc did not improve from 0.75472
-Epoch 9/20
-Epoch 9: val_master_logits_acc did not improve from 0.75472
-Epoch 10/20
-Epoch 10: val_master_logits_acc did not improve from 0.75472
-Epoch 10: ReduceLROnPlateau reducing learning rate to 2.499999936844688e-05.
-Epoch 10: early stopping
+Epoch 6: val_master_logits_acc did not improve from 0.41400
+Epoch 6: early stopping
 
 =======================================================
 STEP: Eval Master Fusion (Features v2)
 =======================================================
 
+WARNING:tensorflow:TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.

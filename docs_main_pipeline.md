@@ -1798,19 +1798,7 @@ weighted avg       0.78      0.76      0.77      2847
 
 ---
 
-### Step 8 — Cross-Dataset Evaluation (Celeb-DF)
 
-```bash
-# Test with a subset (100 videos per class — faster)
-python eval_celebdf.py --data_dir DataSets/Celeb-DF-v2 --max_per_class 100
-
-# Full evaluation (all videos)
-python eval_celebdf.py --data_dir DataSets/Celeb-DF-v2
-```
-
-This is the key generalization test. A physics-based model should achieve substantially better cross-dataset AUC than a purely pixel-based model, which typically degrades dramatically.
-
----
 
 ### Step 9 — Run All Experiments Automatically
 

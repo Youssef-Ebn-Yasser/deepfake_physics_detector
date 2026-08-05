@@ -14,7 +14,7 @@ dataset:
   val_ratio: 0.15
   test_ratio: 0.15
   split_seed: 42
-  features_dir: DataSets/features_v2
+  features_dir: DataSets\features_v2
 preprocessing:
   n_frames: 16
   target_size:

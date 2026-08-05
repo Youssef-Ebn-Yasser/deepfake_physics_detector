@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 import yaml
 import tensorflow as tf
-from data.dataset_loader import get_datasets
+from data.dataset_loader import get_strict_datasets
 from models.subsystem_1 import build_subsystem1_model
 
 
@@ -49,7 +49,7 @@ def main():
     lr = cfg['training']['subsystem_lr']
 
     # --- Data ---
-    train_ds, val_ds, _, split_info = get_datasets(cfg)
+    train_ds, val_ds, _, split_info = get_strict_datasets(cfg)
     train_ds = make_sub1_dataset(train_ds)
     val_ds = make_sub1_dataset(val_ds)
 
