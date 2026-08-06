@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import yaml
 import numpy as np
 import tensorflow as tf
-from data.dataset_loader import get_strict_datasets
+from data.dataset_loader import get_datasets
 from models.master_fusion import (
     build_master_physics_detector, SubSystem1Encoder, SubSystem2Encoder,
 )
@@ -113,7 +113,7 @@ def main():
     epochs_s2   = cfg['training']['epochs_stage2']
 
     # --- Data ---
-    train_ds, val_ds, test_ds, split_info = get_strict_datasets(cfg)
+    train_ds, val_ds, test_ds, split_info = get_datasets(cfg)
     train_ds     = make_labels_dict(train_ds)
     val_ds       = make_labels_dict(val_ds)
     test_ds_eval = make_labels_dict(test_ds)

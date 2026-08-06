@@ -23,7 +23,7 @@ import yaml
 import numpy as np
 import tensorflow as tf
 
-from data.dataset_loader import get_strict_datasets
+from data.dataset_loader import get_datasets
 from models.fusion_1_2_mid import build_fusion_1_2_mid
 
 
@@ -119,7 +119,7 @@ def main():
     epochs_s2   = cfg['training']['epochs_stage2']
 
     # --- Data ---
-    train_ds, val_ds, test_ds, split_info = get_strict_datasets(cfg)
+    train_ds, val_ds, test_ds, split_info = get_datasets(cfg)
     train_ds    = make_labels_dict(train_ds)
     val_ds      = make_labels_dict(val_ds)
     test_ds_eval= make_labels_dict(test_ds)
